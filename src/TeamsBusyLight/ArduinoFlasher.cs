@@ -1,27 +1,39 @@
 using System.Diagnostics;
 using System.IO.Ports;
+using System.Reflection;
 
 namespace TeamsBusyLight;
 
 public static class ArduinoFlasher
 {
+    private static readonly string CacheDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "TeamsBusyLight", "avrdude");
+
     /// <summary>
     /// Flash the BusyLight firmware to an Arduino Pro Micro (ATmega32U4 / Caterina bootloader).
-    /// 1. Open serial at 1200 baud and close — this triggers the bootloader reset.
-    /// 2. Wait for the bootloader COM port to appear.
-    /// 3. Run avrdude to upload the hex.
+    /// 1. Extract avrdude from embedded resources (cached).
+    /// 2. Open serial at 1200 baud and close — this triggers the bootloader reset.
+    /// 3. Wait for the bootloader COM port to appear.
+    /// 4. Run avrdude to upload the hex.
     /// </summary>
     public static async Task<(bool Success, string Output)> FlashAsync(string comPort, Action<string>? onProgress = null)
     {
-        var resourceDir = Path.Combine(AppContext.BaseDirectory, "Resources");
-        var avrdudePath = Path.Combine(resourceDir, "avrdude.exe");
-        var confPath = Path.Combine(resourceDir, "avrdude.conf");
-        var hexPath = Path.Combine(resourceDir, "BusyLight.hex");
+        var avrdudePath = Path.Combine(CacheDir, "avrdude.exe");
+        var confPath = Path.Combine(CacheDir, "avrdude.conf");
+        var hexPath = Path.Combine(CacheDir, "BusyLight.hex");
 
-        if (!File.Exists(avrdudePath))
-            return (false, $"avrdude.exe not found at {avrdudePath}");
-        if (!File.Exists(hexPath))
-            return (false, $"BusyLight.hex not found at {hexPath}");
+        // Extract embedded resources if not already cached
+        try
+        {
+            ExtractIfMissing("avrdude.exe", avrdudePath);
+            ExtractIfMissing("avrdude.conf", confPath);
+            ExtractIfMissing("BusyLight.hex", hexPath);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Failed to extract resources: {ex.Message}");
+        }
 
         onProgress?.Invoke("Triggering bootloader reset (1200 baud touch)...");
 
@@ -102,5 +114,21 @@ public static class ArduinoFlasher
         {
             return (false, $"Failed to run avrdude: {ex.Message}");
         }
+    }
+
+    private static void ExtractIfMissing(string resourceFileName, string targetPath)
+    {
+        if (File.Exists(targetPath)) return;
+
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = assembly.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith(resourceFileName, StringComparison.OrdinalIgnoreCase))
+            ?? throw new FileNotFoundException($"Embedded resource '{resourceFileName}' not found.");
+
+        using var stream = assembly.GetManifestResourceStream(resourceName)!;
+        using var fs = File.Create(targetPath);
+        stream.CopyTo(fs);
     }
 }

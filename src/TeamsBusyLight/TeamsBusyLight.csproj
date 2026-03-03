@@ -19,9 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Resources\avrdude.exe" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Resources\avrdude.conf" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Resources\BusyLight.hex" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Resources\avrdude.exe" />
+    <EmbeddedResource Include="Resources\avrdude.conf" />
+    <EmbeddedResource Include="Resources\BusyLight.hex" />
     <EmbeddedResource Include="Resources\wiring-diagram.svg" />
   </ItemGroup>
 

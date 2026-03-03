@@ -125,7 +125,7 @@ public class TrayApp : ApplicationContext
         var form = new Form
         {
             Text = "Teams Busy Light Settings",
-            Size = new Size(420, 780),
+            Width = 420,
             StartPosition = FormStartPosition.CenterScreen,
             FormBorderStyle = FormBorderStyle.FixedDialog,
             MaximizeBox = false,
@@ -182,6 +182,8 @@ public class TrayApp : ApplicationContext
         y += 10;
 
         // --- Graph API settings (shown/hidden based on mode) ---
+        var graphStartY = y;
+
         var lblGraphSection = new Label { Text = "Graph API Settings:", Location = new Point(20, y), AutoSize = true, Font = new Font(Control.DefaultFont, FontStyle.Bold) };
         y += 22;
 
@@ -206,30 +208,43 @@ public class TrayApp : ApplicationContext
         }
         y += 10;
 
-        // Toggle Graph section visibility based on mode
-        void UpdateGraphVisibility()
+        var graphEndY = y;
+
+        // --- Controls below Graph section (repositioned dynamically) ---
+        var sep4 = new Label { Text = "", Size = new Size(360, 1), BorderStyle = BorderStyle.Fixed3D };
+        var lblArduino = new Label { Text = "Arduino Tools:", AutoSize = true, Font = new Font(Control.DefaultFont, FontStyle.Bold) };
+        var btnFlash = new Button { Text = "Flash Arduino Firmware", Width = 175, Height = 30 };
+        var btnWiring = new Button { Text = "Wiring Diagram", Width = 175, Height = 30 };
+        var lblFlashStatus = new Label { Text = "", Size = new Size(360, 40), ForeColor = Color.DimGray };
+        var sep5 = new Label { Text = "", Size = new Size(360, 1), BorderStyle = BorderStyle.Fixed3D };
+        var btnUpdate = new Button { Text = "Check for Updates", Width = 175, Height = 30 };
+        var lblVersion = new Label { Text = UpdateChecker.CurrentVersion, AutoSize = true, ForeColor = Color.DimGray };
+        var btnSave = new Button { Text = "Save && Connect", Width = 360, Height = 35 };
+
+        // Reposition all controls below Graph section and resize form
+        void RepositionControls()
         {
             var visible = rbGraph.Checked;
             foreach (var c in graphControls) c.Visible = visible;
             foreach (var kv in checkboxes) kv.Value.Visible = visible;
+
+            var cy = visible ? graphEndY : graphStartY;
+
+            sep4.Location = new Point(20, cy); cy += 10;
+            lblArduino.Location = new Point(20, cy); cy += 24;
+            btnFlash.Location = new Point(20, cy);
+            btnWiring.Location = new Point(205, cy); cy += 40;
+            lblFlashStatus.Location = new Point(20, cy); cy += 45;
+            sep5.Location = new Point(20, cy); cy += 10;
+            btnUpdate.Location = new Point(20, cy);
+            lblVersion.Location = new Point(205, cy + 6); cy += 40;
+            btnSave.Location = new Point(20, cy); cy += 50;
+
+            form.ClientSize = new Size(form.ClientSize.Width, cy);
         }
 
-        rbMic.CheckedChanged += (_, _) => UpdateGraphVisibility();
-        rbGraph.CheckedChanged += (_, _) => UpdateGraphVisibility();
-
-        var sep4 = new Label { Text = "", Location = new Point(20, y), Size = new Size(360, 1), BorderStyle = BorderStyle.Fixed3D };
-        y += 10;
-
-        // --- Arduino Tools ---
-        var lblArduino = new Label { Text = "Arduino Tools:", Location = new Point(20, y), AutoSize = true, Font = new Font(Control.DefaultFont, FontStyle.Bold) };
-        y += 24;
-
-        var btnFlash = new Button { Text = "Flash Arduino Firmware", Location = new Point(20, y), Width = 175, Height = 30 };
-        var btnWiring = new Button { Text = "Wiring Diagram", Location = new Point(205, y), Width = 175, Height = 30 };
-        y += 40;
-
-        var lblFlashStatus = new Label { Text = "", Location = new Point(20, y), Size = new Size(360, 40), ForeColor = Color.DimGray };
-        y += 45;
+        rbMic.CheckedChanged += (_, _) => RepositionControls();
+        rbGraph.CheckedChanged += (_, _) => RepositionControls();
 
         btnFlash.Click += async (_, _) =>
         {
@@ -257,18 +272,7 @@ public class TrayApp : ApplicationContext
         };
 
         btnWiring.Click += (_, _) => ShowWiringDiagram();
-
-        var sep5 = new Label { Text = "", Location = new Point(20, y), Size = new Size(360, 1), BorderStyle = BorderStyle.Fixed3D };
-        y += 10;
-
-        // --- Updates ---
-        var btnUpdate = new Button { Text = "Check for Updates", Location = new Point(20, y), Width = 175, Height = 30 };
-        var lblVersion = new Label { Text = UpdateChecker.CurrentVersion, Location = new Point(205, y + 6), AutoSize = true, ForeColor = Color.DimGray };
         btnUpdate.Click += async (_, _) => await CheckForUpdatesAsync();
-        y += 40;
-
-        // --- Save button ---
-        var btnSave = new Button { Text = "Save && Connect", Location = new Point(20, y), Width = 360, Height = 35 };
         btnSave.Click += async (_, _) =>
         {
             _settings.Mode = rbMic.Checked ? DetectionMode.Microphone : DetectionMode.GraphApi;
@@ -296,7 +300,7 @@ public class TrayApp : ApplicationContext
             btnSave
         });
 
-        UpdateGraphVisibility();
+        RepositionControls();
         form.ShowDialog();
     }
 
