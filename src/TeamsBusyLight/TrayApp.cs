@@ -45,6 +45,7 @@ public class TrayApp : ApplicationContext
         menu.Items.Add("Force OFF", null, (_, _) => { _manualOverride = true; _manualState = false; _serial.SetLight(false); UpdateIcon(false); });
         menu.Items.Add("Auto", null, (_, _) => { _manualOverride = false; });
         menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Check for Updates", null, async (_, _) => await CheckForUpdatesAsync());
         menu.Items.Add("Settings...", null, (_, _) => ShowSettings());
         menu.Items.Add("Exit", null, (_, _) => ExitApp());
         return menu;
@@ -124,7 +125,7 @@ public class TrayApp : ApplicationContext
         var form = new Form
         {
             Text = "Teams Busy Light Settings",
-            Size = new Size(420, 720),
+            Size = new Size(420, 780),
             StartPosition = FormStartPosition.CenterScreen,
             FormBorderStyle = FormBorderStyle.FixedDialog,
             MaximizeBox = false,
@@ -257,6 +258,15 @@ public class TrayApp : ApplicationContext
 
         btnWiring.Click += (_, _) => ShowWiringDiagram();
 
+        var sep5 = new Label { Text = "", Location = new Point(20, y), Size = new Size(360, 1), BorderStyle = BorderStyle.Fixed3D };
+        y += 10;
+
+        // --- Updates ---
+        var btnUpdate = new Button { Text = "Check for Updates", Location = new Point(20, y), Width = 175, Height = 30 };
+        var lblVersion = new Label { Text = UpdateChecker.CurrentVersion, Location = new Point(205, y + 6), AutoSize = true, ForeColor = Color.DimGray };
+        btnUpdate.Click += async (_, _) => await CheckForUpdatesAsync();
+        y += 40;
+
         // --- Save button ---
         var btnSave = new Button { Text = "Save && Connect", Location = new Point(20, y), Width = 360, Height = 35 };
         btnSave.Click += async (_, _) =>
@@ -282,6 +292,7 @@ public class TrayApp : ApplicationContext
             lblPort, cmbPort, sep3,
             lblGraphSection, lblClient, txtClient, lblTriggers,
             sep4, lblArduino, btnFlash, btnWiring, lblFlashStatus,
+            sep5, btnUpdate, lblVersion,
             btnSave
         });
 
@@ -324,6 +335,26 @@ public class TrayApp : ApplicationContext
 
         diagramForm.Controls.Add(pictureBox);
         diagramForm.ShowDialog();
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        var update = await UpdateChecker.CheckForUpdateAsync();
+        if (update is null)
+        {
+            MessageBox.Show($"You're up to date! ({UpdateChecker.CurrentVersion})", "No Updates",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        var msg = $"New version available: {update.TagName} (current: {UpdateChecker.CurrentVersion})";
+        if (update.HexUrl is not null)
+            msg += "\nIncludes firmware update.";
+        msg += "\n\nOpen release page to download?";
+
+        var result = MessageBox.Show(msg, "Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+        if (result == DialogResult.Yes)
+            UpdateChecker.OpenReleasePage(update.HtmlUrl);
     }
 
     private void ExitApp()
