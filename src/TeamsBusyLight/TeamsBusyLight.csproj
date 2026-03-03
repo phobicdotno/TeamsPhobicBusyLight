@@ -12,6 +12,14 @@
     <PackageReference Include="Microsoft.Identity.Client" Version="4.82.1" />
     <PackageReference Include="System.IO.Ports" Version="10.0.3" />
     <PackageReference Include="System.Net.Http.Json" Version="10.0.3" />
+    <PackageReference Include="Svg" Version="3.4.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Resources\avrdude.exe" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\avrdude.conf" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\BusyLight.hex" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Resources\wiring-diagram.svg" />
   </ItemGroup>
 
 </Project>

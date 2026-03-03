@@ -1,3 +1,6 @@
+using System.Reflection;
+using Svg;
+
 namespace TeamsBusyLight;
 
 public class TrayApp : ApplicationContext
@@ -121,7 +124,7 @@ public class TrayApp : ApplicationContext
         var form = new Form
         {
             Text = "Teams Busy Light Settings",
-            Size = new Size(420, 620),
+            Size = new Size(420, 720),
             StartPosition = FormStartPosition.CenterScreen,
             FormBorderStyle = FormBorderStyle.FixedDialog,
             MaximizeBox = false,
@@ -213,6 +216,47 @@ public class TrayApp : ApplicationContext
         rbMic.CheckedChanged += (_, _) => UpdateGraphVisibility();
         rbGraph.CheckedChanged += (_, _) => UpdateGraphVisibility();
 
+        var sep4 = new Label { Text = "", Location = new Point(20, y), Size = new Size(360, 1), BorderStyle = BorderStyle.Fixed3D };
+        y += 10;
+
+        // --- Arduino Tools ---
+        var lblArduino = new Label { Text = "Arduino Tools:", Location = new Point(20, y), AutoSize = true, Font = new Font(Control.DefaultFont, FontStyle.Bold) };
+        y += 24;
+
+        var btnFlash = new Button { Text = "Flash Arduino Firmware", Location = new Point(20, y), Width = 175, Height = 30 };
+        var btnWiring = new Button { Text = "Wiring Diagram", Location = new Point(205, y), Width = 175, Height = 30 };
+        y += 40;
+
+        var lblFlashStatus = new Label { Text = "", Location = new Point(20, y), Size = new Size(360, 40), ForeColor = Color.DimGray };
+        y += 45;
+
+        btnFlash.Click += async (_, _) =>
+        {
+            var port = cmbPort.SelectedItem?.ToString();
+            if (string.IsNullOrEmpty(port))
+            {
+                lblFlashStatus.Text = "Select a COM port first.";
+                lblFlashStatus.ForeColor = Color.OrangeRed;
+                return;
+            }
+
+            btnFlash.Enabled = false;
+            lblFlashStatus.ForeColor = Color.DimGray;
+            var (success, output) = await ArduinoFlasher.FlashAsync(port, msg =>
+            {
+                if (form.InvokeRequired)
+                    form.Invoke(() => lblFlashStatus.Text = msg);
+                else
+                    lblFlashStatus.Text = msg;
+            });
+
+            btnFlash.Enabled = true;
+            lblFlashStatus.ForeColor = success ? Color.Green : Color.OrangeRed;
+            lblFlashStatus.Text = success ? "Flash complete!" : $"Flash failed: {output[..Math.Min(output.Length, 120)]}";
+        };
+
+        btnWiring.Click += (_, _) => ShowWiringDiagram();
+
         // --- Save button ---
         var btnSave = new Button { Text = "Save && Connect", Location = new Point(20, y), Width = 360, Height = 35 };
         btnSave.Click += async (_, _) =>
@@ -237,11 +281,49 @@ public class TrayApp : ApplicationContext
             lblMode, rbMic, rbGraph, sep2,
             lblPort, cmbPort, sep3,
             lblGraphSection, lblClient, txtClient, lblTriggers,
+            sep4, lblArduino, btnFlash, btnWiring, lblFlashStatus,
             btnSave
         });
 
         UpdateGraphVisibility();
         form.ShowDialog();
+    }
+
+    private static void ShowWiringDiagram()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = assembly.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith("wiring-diagram.svg", StringComparison.OrdinalIgnoreCase));
+
+        if (resourceName is null)
+        {
+            MessageBox.Show("Wiring diagram resource not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        using var stream = assembly.GetManifestResourceStream(resourceName)!;
+        var svgDoc = SvgDocument.Open<SvgDocument>(stream);
+        var bmp = svgDoc.Draw(700, 420);
+
+        var diagramForm = new Form
+        {
+            Text = "Teams Busy Light — Wiring Diagram",
+            ClientSize = new Size(700, 420),
+            StartPosition = FormStartPosition.CenterScreen,
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            MaximizeBox = false,
+            BackColor = Color.FromArgb(30, 30, 30)
+        };
+
+        var pictureBox = new PictureBox
+        {
+            Image = bmp,
+            Dock = DockStyle.Fill,
+            SizeMode = PictureBoxSizeMode.Zoom
+        };
+
+        diagramForm.Controls.Add(pictureBox);
+        diagramForm.ShowDialog();
     }
 
     private void ExitApp()

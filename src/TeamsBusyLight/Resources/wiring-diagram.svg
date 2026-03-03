@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 420" font-family="Segoe UI, sans-serif">
+  <defs>
+    <style>
+      .board { fill: #1a5276; stroke: #2980b9; stroke-width: 2; rx: 8; }
+      .relay { fill: #1a3c34; stroke: #27ae60; stroke-width: 2; rx: 6; }
+      .led { fill: #2c2c2c; stroke: #f39c12; stroke-width: 2; rx: 6; }
+      .psu { fill: #4a4a4a; stroke: #e74c3c; stroke-width: 2; rx: 6; }
+      .label { fill: white; font-size: 13px; font-weight: 600; }
+      .sublabel { fill: #bbb; font-size: 11px; }
+      .pin { fill: #f1c40f; font-size: 11px; font-weight: 600; }
+      .wire-signal { stroke: #3498db; stroke-width: 2.5; fill: none; marker-end: url(#arrow-blue); }
+      .wire-power { stroke: #e74c3c; stroke-width: 2.5; fill: none; marker-end: url(#arrow-red); }
+      .wire-gnd { stroke: #555; stroke-width: 2.5; fill: none; marker-end: url(#arrow-gray); }
+      .wire-12v { stroke: #f39c12; stroke-width: 2.5; fill: none; marker-end: url(#arrow-orange); }
+      .usb-wire { stroke: #9b59b6; stroke-width: 2.5; fill: none; stroke-dasharray: 8,4; }
+      .title { fill: white; font-size: 18px; font-weight: 700; }
+      .note { fill: #888; font-size: 10px; font-style: italic; }
+    </style>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3498db"/></marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#e74c3c"/></marker>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f39c12"/></marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="700" height="420" fill="#1e1e1e" rx="12"/>
+
+  <!-- Title -->
+  <text x="350" y="32" class="title" text-anchor="middle">Teams Busy Light — Wiring Diagram</text>
+
+  <!-- PC (USB) -->
+  <rect x="20" y="130" width="100" height="80" rx="8" fill="#34495e" stroke="#7f8c8d" stroke-width="2"/>
+  <text x="70" y="165" class="label" text-anchor="middle">PC</text>
+  <text x="70" y="182" class="sublabel" text-anchor="middle">USB</text>
+
+  <!-- USB wire -->
+  <path d="M120,170 L175,170" class="usb-wire"/>
+  <text x="148" y="162" class="note" text-anchor="middle">USB</text>
+
+  <!-- Arduino Pro Micro -->
+  <rect x="175" y="105" width="150" height="130" class="board"/>
+  <text x="250" y="140" class="label" text-anchor="middle">Arduino</text>
+  <text x="250" y="158" class="label" text-anchor="middle">Pro Micro</text>
+  <text x="250" y="178" class="sublabel" text-anchor="middle">ATmega32U4</text>
+
+  <!-- Pin labels on Arduino -->
+  <text x="330" y="145" class="pin" text-anchor="start">Pin 9</text>
+  <text x="330" y="175" class="pin" text-anchor="start">5V</text>
+  <text x="330" y="205" class="pin" text-anchor="start">GND</text>
+
+  <!-- Signal wire: Pin 9 → Relay IN -->
+  <path d="M355,140 L430,140" class="wire-signal"/>
+  <text x="393" y="133" class="note" text-anchor="middle">Signal</text>
+
+  <!-- Power wire: 5V → Relay VCC -->
+  <path d="M348,170 L430,170" class="wire-power"/>
+  <text x="393" y="163" class="note" text-anchor="middle">5V</text>
+
+  <!-- GND wire: GND → Relay GND -->
+  <path d="M355,200 L430,200" class="wire-gnd"/>
+  <text x="393" y="215" class="note" text-anchor="middle">GND</text>
+
+  <!-- Relay Module -->
+  <rect x="430" y="105" width="120" height="130" class="relay"/>
+  <text x="490" y="140" class="label" text-anchor="middle">5V Relay</text>
+  <text x="490" y="158" class="label" text-anchor="middle">Module</text>
+
+  <!-- Relay pin labels left -->
+  <text x="435" y="145" class="pin">IN</text>
+  <text x="435" y="175" class="pin">VCC</text>
+  <text x="435" y="205" class="pin">GND</text>
+
+  <!-- Relay pin labels right -->
+  <text x="520" y="145" class="pin">NO</text>
+  <text x="520" y="175" class="pin">COM</text>
+
+  <!-- 12V LED Panel -->
+  <rect x="540" y="280" width="130" height="80" class="led"/>
+  <text x="605" y="315" class="label" text-anchor="middle">12V LED</text>
+  <text x="605" y="335" class="label" text-anchor="middle">Panel</text>
+
+  <!-- 12V PSU -->
+  <rect x="175" y="290" width="130" height="65" class="psu"/>
+  <text x="240" y="320" class="label" text-anchor="middle">12V PSU</text>
+  <text x="240" y="338" class="sublabel" text-anchor="middle">Power Supply</text>
+
+  <!-- Wire: Relay NO → LED Panel (+) -->
+  <path d="M550,140 L620,140 L620,278" class="wire-12v"/>
+  <text x="630" y="210" class="pin" text-anchor="start">+</text>
+
+  <!-- Wire: Relay COM → 12V PSU (+) -->
+  <path d="M550,170 L580,170 L580,250 L340,250 L340,300 L305,300" class="wire-12v"/>
+  <text x="315" y="293" class="pin">+ 12V</text>
+
+  <!-- Wire: PSU (-) → LED Panel (-) -->
+  <path d="M305,340 L420,340 L420,380 L570,380 L570,362" class="wire-gnd"/>
+  <text x="315" y="347" class="pin">- GND</text>
+  <text x="560" y="375" class="pin">-</text>
+
+  <!-- Legend -->
+  <rect x="20" y="340" width="130" height="70" rx="6" fill="#2a2a2a" stroke="#444" stroke-width="1"/>
+  <text x="30" y="358" class="sublabel">Legend:</text>
+  <line x1="30" y1="372" x2="55" y2="372" stroke="#3498db" stroke-width="2.5"/>
+  <text x="60" y="376" class="note">Signal</text>
+  <line x1="30" y1="387" x2="55" y2="387" stroke="#e74c3c" stroke-width="2.5"/>
+  <text x="60" y="391" class="note">5V Power</text>
+  <line x1="30" y1="402" x2="55" y2="402" stroke="#f39c12" stroke-width="2.5"/>
+  <text x="60" y="406" class="note">12V Circuit</text>
+</svg>
