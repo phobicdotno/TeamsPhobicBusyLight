@@ -1,2 +1,4 @@
 publish/
 installer/*.msi
+installer/*.wixpdb
+*.csproj.user
