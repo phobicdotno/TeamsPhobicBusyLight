@@ -2,8 +2,15 @@ using System.Text.Json;
 
 namespace TeamsBusyLight;
 
+public enum DetectionMode
+{
+    GraphApi,
+    Microphone
+}
+
 public class AppSettings
 {
+    public DetectionMode Mode { get; set; } = DetectionMode.Microphone;
     public string ClientId { get; set; } = "";
     public string ComPort { get; set; } = "";
     public int PollIntervalSeconds { get; set; } = 5;
