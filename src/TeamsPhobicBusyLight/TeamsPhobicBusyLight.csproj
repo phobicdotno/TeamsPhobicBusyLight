@@ -6,9 +6,11 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.1.1</Version>
-    <AssemblyVersion>1.1.1</AssemblyVersion>
-    <FileVersion>1.1.1</FileVersion>
+    <Version>1.2.0</Version>
+    <AssemblyVersion>1.2.0</AssemblyVersion>
+    <FileVersion>1.2.0</FileVersion>
+    <AssemblyName>TeamsPhobicBusyLight</AssemblyName>
+    <RootNamespace>TeamsPhobicBusyLight</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

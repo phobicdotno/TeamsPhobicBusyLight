@@ -1,7 +1,7 @@
 using System.Reflection;
 using Svg;
 
-namespace TeamsBusyLight;
+namespace TeamsPhobicBusyLight;
 
 public class TrayApp : ApplicationContext
 {
@@ -9,6 +9,7 @@ public class TrayApp : ApplicationContext
     private readonly System.Windows.Forms.Timer _pollTimer;
     private readonly SerialService _serial = new();
     private readonly MicDetectionService _mic = new();
+    private readonly TeamsLogDetectionService _teamsLog = new();
     private GraphService? _graph;
     private AppSettings _settings;
     private bool? _lastState;
@@ -22,7 +23,7 @@ public class TrayApp : ApplicationContext
         _trayIcon = new NotifyIcon
         {
             Icon = CreateIcon(Color.Gray),
-            Text = "Teams Busy Light — Disconnected",
+            Text = "Teams Phobic Busy Light — Disconnected",
             Visible = true,
             ContextMenuStrip = BuildMenu()
         };
@@ -34,6 +35,8 @@ public class TrayApp : ApplicationContext
             _ = StartAsync();
         else if (_settings.Mode == DetectionMode.GraphApi && !string.IsNullOrEmpty(_settings.ClientId) && !string.IsNullOrEmpty(_settings.ComPort))
             _ = StartAsync();
+        else if (_settings.Mode == DetectionMode.TeamsLogFile && !string.IsNullOrEmpty(_settings.ComPort))
+            _ = StartAsync();
         else
             ShowSettings();
     }
@@ -41,8 +44,14 @@ public class TrayApp : ApplicationContext
     private ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Force ON", null, (_, _) => { _manualOverride = true; _manualState = true; _serial.SetLight(true); UpdateIcon(true); });
-        menu.Items.Add("Force OFF", null, (_, _) => { _manualOverride = true; _manualState = false; _serial.SetLight(false); UpdateIcon(false); });
+        var versionItem = new ToolStripMenuItem($"Teams Phobic Busy Light {UpdateChecker.CurrentVersion}")
+        {
+            Enabled = false
+        };
+        menu.Items.Add(versionItem);
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Force ON", null, (_, _) => { _manualOverride = true; _manualState = true; _serial.SetState(LightState.Busy); UpdateIcon(true); });
+        menu.Items.Add("Force OFF", null, (_, _) => { _manualOverride = true; _manualState = false; _serial.SetState(LightState.Available); UpdateIcon(false); });
         menu.Items.Add("Auto", null, (_, _) => { _manualOverride = false; });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Check for Updates", null, async (_, _) => await CheckForUpdatesAsync());
@@ -66,15 +75,25 @@ public class TrayApp : ApplicationContext
                 var ok = await _graph.SignInAsync();
                 if (!ok)
                 {
-                    _trayIcon.Text = "Teams Busy Light — Sign-in failed";
+                    _trayIcon.Text = "Teams Phobic Busy Light — Sign-in failed";
                     _trayIcon.Icon = CreateIcon(Color.Gray);
                     return;
                 }
             }
         }
+        else if (_settings.Mode == DetectionMode.TeamsLogFile)
+        {
+            _teamsLog.DetectTeamsInstallation();
+        }
 
-        var modeLabel = _settings.Mode == DetectionMode.Microphone ? "Mic" : "Graph";
-        _trayIcon.Text = $"Teams Busy Light — Active ({modeLabel})";
+        var modeLabel = _settings.Mode switch
+        {
+            DetectionMode.Microphone => "Mic",
+            DetectionMode.GraphApi => "Graph",
+            DetectionMode.TeamsLogFile => "Teams Log",
+            _ => "Unknown"
+        };
+        _trayIcon.Text = $"Teams Phobic Busy Light — Active ({modeLabel})";
         _pollTimer.Start();
     }
 
@@ -88,6 +107,10 @@ public class TrayApp : ApplicationContext
         {
             inMeeting = _mic.IsMicrophoneInUse();
         }
+        else if (_settings.Mode == DetectionMode.TeamsLogFile)
+        {
+            inMeeting = _teamsLog.IsInMeeting();
+        }
         else
         {
             if (_graph is null) return;
@@ -99,7 +122,7 @@ public class TrayApp : ApplicationContext
         if (inMeeting != _lastState)
         {
             _lastState = inMeeting;
-            _serial.SetLight(inMeeting.Value);
+            _serial.SetState(inMeeting.Value ? LightState.Busy : LightState.Available);
             UpdateIcon(inMeeting.Value);
         }
     }
@@ -107,7 +130,7 @@ public class TrayApp : ApplicationContext
     private void UpdateIcon(bool inMeeting)
     {
         _trayIcon.Icon = CreateIcon(inMeeting ? Color.Red : Color.LimeGreen);
-        _trayIcon.Text = inMeeting ? "Teams Busy Light — IN MEETING" : "Teams Busy Light — Available";
+        _trayIcon.Text = inMeeting ? "Teams Phobic Busy Light — IN MEETING" : "Teams Phobic Busy Light — Available";
     }
 
     private static Icon CreateIcon(Color color)
@@ -122,9 +145,12 @@ public class TrayApp : ApplicationContext
 
     private void ShowSettings()
     {
+        // Detect Teams installation for the settings dialog
+        _teamsLog.DetectTeamsInstallation();
+
         var form = new Form
         {
-            Text = "Teams Busy Light Settings",
+            Text = "Teams Phobic Busy Light Settings",
             Width = 420,
             StartPosition = FormStartPosition.CenterScreen,
             FormBorderStyle = FormBorderStyle.FixedDialog,
@@ -145,6 +171,10 @@ public class TrayApp : ApplicationContext
             var micActive = _mic.IsMicrophoneInUse();
             debugInfo = $"Mode: Microphone Detection\nMic in use: {(micActive ? "YES" : "No")}\nActive app: {_mic.LastActiveApp ?? "—"}";
         }
+        else if (_settings.Mode == DetectionMode.TeamsLogFile)
+        {
+            debugInfo = $"Mode: Teams Log File\nTeams: {_teamsLog.TeamsVersion ?? "—"}\nStatus: {_teamsLog.LastStatus ?? "—"}";
+        }
         else
         {
             debugInfo = $"Mode: Graph API\nAvailability: {_graph?.LastAvailability ?? "—"}\nActivity: {_graph?.LastActivity ?? "—"}";
@@ -164,7 +194,21 @@ public class TrayApp : ApplicationContext
         var rbMic = new RadioButton { Text = "Microphone in-use (zero config, works with any app)", Location = new Point(20, y), AutoSize = true, Checked = _settings.Mode == DetectionMode.Microphone };
         y += 24;
         var rbGraph = new RadioButton { Text = "Microsoft Graph API (Teams-specific, needs Azure ID)", Location = new Point(20, y), AutoSize = true, Checked = _settings.Mode == DetectionMode.GraphApi };
-        y += 30;
+        y += 24;
+        var rbTeamsLog = new RadioButton { Text = "Teams log file (local, no Azure ID — New Teams only)", Location = new Point(20, y), AutoSize = true, Checked = _settings.Mode == DetectionMode.TeamsLogFile };
+        y += 22;
+
+        // Teams detection status label
+        var teamsDetectColor = _teamsLog.TeamsFound && _teamsLog.TeamsVersion == "New Teams (MSIX)" ? Color.Green : Color.OrangeRed;
+        var lblTeamsDetect = new Label
+        {
+            Text = _teamsLog.DetectionInfo ?? "Teams not checked.",
+            Location = new Point(36, y),
+            AutoSize = true,
+            ForeColor = teamsDetectColor,
+            Font = new Font(Control.DefaultFont, FontStyle.Italic)
+        };
+        y += 22;
 
         var sep2 = new Label { Text = "", Location = new Point(20, y), Size = new Size(360, 1), BorderStyle = BorderStyle.Fixed3D };
         y += 10;
@@ -224,11 +268,14 @@ public class TrayApp : ApplicationContext
         // Reposition all controls below Graph section and resize form
         void RepositionControls()
         {
-            var visible = rbGraph.Checked;
-            foreach (var c in graphControls) c.Visible = visible;
-            foreach (var kv in checkboxes) kv.Value.Visible = visible;
+            var graphVisible = rbGraph.Checked;
+            foreach (var c in graphControls) c.Visible = graphVisible;
+            foreach (var kv in checkboxes) kv.Value.Visible = graphVisible;
 
-            var cy = visible ? graphEndY : graphStartY;
+            // Show Teams detection info only when Teams log mode selected
+            lblTeamsDetect.Visible = rbTeamsLog.Checked;
+
+            var cy = graphVisible ? graphEndY : graphStartY;
 
             sep4.Location = new Point(20, cy); cy += 10;
             lblArduino.Location = new Point(20, cy); cy += 24;
@@ -245,6 +292,7 @@ public class TrayApp : ApplicationContext
 
         rbMic.CheckedChanged += (_, _) => RepositionControls();
         rbGraph.CheckedChanged += (_, _) => RepositionControls();
+        rbTeamsLog.CheckedChanged += (_, _) => RepositionControls();
 
         btnFlash.Click += async (_, _) =>
         {
@@ -275,7 +323,13 @@ public class TrayApp : ApplicationContext
         btnUpdate.Click += async (_, _) => await CheckForUpdatesAsync();
         btnSave.Click += async (_, _) =>
         {
-            _settings.Mode = rbMic.Checked ? DetectionMode.Microphone : DetectionMode.GraphApi;
+            if (rbMic.Checked)
+                _settings.Mode = DetectionMode.Microphone;
+            else if (rbGraph.Checked)
+                _settings.Mode = DetectionMode.GraphApi;
+            else
+                _settings.Mode = DetectionMode.TeamsLogFile;
+
             _settings.ComPort = cmbPort.SelectedItem?.ToString() ?? "";
             _settings.ClientId = txtClient.Text.Trim();
             foreach (var kv in checkboxes)
@@ -292,7 +346,7 @@ public class TrayApp : ApplicationContext
 
         form.Controls.AddRange(new Control[] {
             lblDebug, lblStatus, sep1,
-            lblMode, rbMic, rbGraph, sep2,
+            lblMode, rbMic, rbGraph, rbTeamsLog, lblTeamsDetect, sep2,
             lblPort, cmbPort, sep3,
             lblGraphSection, lblClient, txtClient, lblTriggers,
             sep4, lblArduino, btnFlash, btnWiring, lblFlashStatus,
@@ -322,7 +376,7 @@ public class TrayApp : ApplicationContext
 
         var diagramForm = new Form
         {
-            Text = "Teams Busy Light — Wiring Diagram",
+            Text = "Teams Phobic Busy Light — Wiring Diagram",
             ClientSize = new Size(700, 420),
             StartPosition = FormStartPosition.CenterScreen,
             FormBorderStyle = FormBorderStyle.FixedDialog,
@@ -351,20 +405,37 @@ public class TrayApp : ApplicationContext
             return;
         }
 
-        var msg = $"New version available: {update.TagName} (current: {UpdateChecker.CurrentVersion})";
+        var msg = $"Update to {update.TagName}? (current: {UpdateChecker.CurrentVersion})\nThe app will restart.";
         if (update.HexUrl is not null)
             msg += "\nIncludes firmware update.";
-        msg += "\n\nOpen release page to download?";
 
         var result = MessageBox.Show(msg, "Update Available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
         if (result == DialogResult.Yes)
-            UpdateChecker.OpenReleasePage(update.HtmlUrl);
+        {
+            if (update.ExeUrl is not null)
+            {
+                try
+                {
+                    await UpdateChecker.SelfUpdateAsync(update.ExeUrl);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Update failed: {ex.Message}\n\nOpening release page instead.",
+                        "Update Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    UpdateChecker.OpenReleasePage(update.HtmlUrl);
+                }
+            }
+            else
+            {
+                UpdateChecker.OpenReleasePage(update.HtmlUrl);
+            }
+        }
     }
 
     private void ExitApp()
     {
         _pollTimer.Stop();
-        _serial.SetLight(false);
+        _serial.SetState(LightState.Off);
         _serial.Dispose();
         _trayIcon.Visible = false;
         _trayIcon.Dispose();

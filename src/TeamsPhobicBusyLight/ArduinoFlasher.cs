@@ -2,13 +2,13 @@ using System.Diagnostics;
 using System.IO.Ports;
 using System.Reflection;
 
-namespace TeamsBusyLight;
+namespace TeamsPhobicBusyLight;
 
 public static class ArduinoFlasher
 {
     private static readonly string CacheDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "TeamsBusyLight", "avrdude");
+        "TeamsPhobicBusyLight", "avrdude");
 
     /// <summary>
     /// Flash the BusyLight firmware to an Arduino Pro Micro (ATmega32U4 / Caterina bootloader).

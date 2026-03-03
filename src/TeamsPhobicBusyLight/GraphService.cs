@@ -2,7 +2,7 @@ using Microsoft.Identity.Client;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
-namespace TeamsBusyLight;
+namespace TeamsPhobicBusyLight;
 
 public class GraphService
 {

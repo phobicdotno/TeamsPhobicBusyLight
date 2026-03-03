@@ -2,17 +2,17 @@ using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 
-namespace TeamsBusyLight;
+namespace TeamsPhobicBusyLight;
 
 public static class UpdateChecker
 {
     private const string RepoOwner = "phobicdotno";
-    private const string RepoName = "TeamsBusyLight";
+    private const string RepoName = "TeamsPhobicBusyLight";
     private static readonly HttpClient Http = new();
 
     static UpdateChecker()
     {
-        Http.DefaultRequestHeaders.UserAgent.ParseAdd("TeamsBusyLight");
+        Http.DefaultRequestHeaders.UserAgent.ParseAdd("TeamsPhobicBusyLight");
     }
 
     public static string CurrentVersion
@@ -83,7 +83,10 @@ public static class UpdateChecker
             onProgress?.Invoke("Downloading new firmware...");
             var hexBytes = await Http.GetByteArrayAsync(hexUrl);
 
-            var hexPath = Path.Combine(AppContext.BaseDirectory, "Resources", "BusyLight.hex");
+            var hexPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "TeamsPhobicBusyLight", "avrdude", "BusyLight.hex");
+            Directory.CreateDirectory(Path.GetDirectoryName(hexPath)!);
             await File.WriteAllBytesAsync(hexPath, hexBytes);
 
             onProgress?.Invoke("Firmware updated! Flash Arduino to apply.");
@@ -94,6 +97,39 @@ public static class UpdateChecker
             onProgress?.Invoke($"Download failed: {ex.Message}");
             return false;
         }
+    }
+
+    public static async Task SelfUpdateAsync(string exeUrl)
+    {
+        var tempExe = Path.Combine(Path.GetTempPath(), "TeamsPhobicBusyLight_update.exe");
+        var updateScript = Path.Combine(Path.GetTempPath(), "TeamsPhobicBusyLight_update.cmd");
+        var currentExe = Environment.ProcessPath!;
+
+        // Download new exe
+        var exeBytes = await Http.GetByteArrayAsync(exeUrl);
+        await File.WriteAllBytesAsync(tempExe, exeBytes);
+
+        // Write batch script that replaces the exe and relaunches
+        var script = $"""
+            @echo off
+            timeout /t 2 /nobreak >nul
+            copy /y "{tempExe}" "{currentExe}" >nul
+            del "{tempExe}" >nul
+            start "" "{currentExe}"
+            del "%~f0" >nul
+            """;
+        await File.WriteAllTextAsync(updateScript, script);
+
+        // Launch the updater script and exit
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            Arguments = $"/c \"{updateScript}\"",
+            UseShellExecute = false,
+            CreateNoWindow = true
+        });
+
+        Environment.Exit(0);
     }
 
     public static void OpenReleasePage(string url)

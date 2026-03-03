@@ -1,11 +1,12 @@
 using System.Text.Json;
 
-namespace TeamsBusyLight;
+namespace TeamsPhobicBusyLight;
 
 public enum DetectionMode
 {
     GraphApi,
-    Microphone
+    Microphone,
+    TeamsLogFile
 }
 
 public class AppSettings
@@ -33,11 +34,22 @@ public class AppSettings
     public HashSet<string> GetActiveActivities() =>
         new(ActivityTriggers.Where(kv => kv.Value).Select(kv => kv.Key), StringComparer.OrdinalIgnoreCase);
 
-    private static readonly string SettingsPath = Path.Combine(
-        AppContext.BaseDirectory, "settings.json");
+    private static readonly string SettingsDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "TeamsPhobicBusyLight");
+
+    private static readonly string SettingsPath = Path.Combine(SettingsDir, "settings.json");
 
     public static AppSettings Load()
     {
+        // Migrate from old location next to exe
+        var legacyPath = Path.Combine(AppContext.BaseDirectory, "settings.json");
+        if (!File.Exists(SettingsPath) && File.Exists(legacyPath))
+        {
+            Directory.CreateDirectory(SettingsDir);
+            File.Copy(legacyPath, SettingsPath);
+        }
+
         if (!File.Exists(SettingsPath))
             return new AppSettings();
         try
@@ -50,6 +62,7 @@ public class AppSettings
 
     public void Save()
     {
+        Directory.CreateDirectory(SettingsDir);
         var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(SettingsPath, json);
     }

@@ -26,7 +26,7 @@
   <rect width="700" height="420" fill="#1e1e1e" rx="12"/>
 
   <!-- Title -->
-  <text x="350" y="32" class="title" text-anchor="middle">Teams Busy Light — Wiring Diagram</text>
+  <text x="350" y="32" class="title" text-anchor="middle">Teams Phobic Busy Light — Wiring Diagram</text>
 
   <!-- PC (USB) -->
   <rect x="20" y="130" width="100" height="80" rx="8" fill="#34495e" stroke="#7f8c8d" stroke-width="2"/>

@@ -1,6 +1,6 @@
 using Microsoft.Win32;
 
-namespace TeamsBusyLight;
+namespace TeamsPhobicBusyLight;
 
 public class MicDetectionService
 {
