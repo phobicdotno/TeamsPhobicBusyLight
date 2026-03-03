@@ -54,7 +54,7 @@ public class TrayApp : ApplicationContext
         // Sign in to Graph
         if (_graph is null && !string.IsNullOrEmpty(_settings.ClientId))
         {
-            _graph = new GraphService(_settings.ClientId);
+            _graph = new GraphService(_settings.ClientId, _settings.GetActiveActivities());
             var ok = await _graph.SignInAsync();
             if (!ok)
             {
@@ -104,35 +104,80 @@ public class TrayApp : ApplicationContext
         var form = new Form
         {
             Text = "Teams Busy Light Settings",
-            Size = new Size(400, 250),
+            Size = new Size(420, 580),
             StartPosition = FormStartPosition.CenterScreen,
             FormBorderStyle = FormBorderStyle.FixedDialog,
             MaximizeBox = false,
             MinimizeBox = false
         };
 
-        var lblClient = new Label { Text = "Azure Client ID:", Location = new Point(20, 20), AutoSize = true };
-        var txtClient = new TextBox { Text = _settings.ClientId, Location = new Point(20, 45), Width = 340 };
+        var y = 15;
 
-        var lblPort = new Label { Text = "COM Port:", Location = new Point(20, 80), AutoSize = true };
-        var cmbPort = new ComboBox { Location = new Point(20, 105), Width = 340, DropDownStyle = ComboBoxStyle.DropDownList };
+        // --- Debug status ---
+        var lblDebug = new Label { Text = "Current Status:", Location = new Point(20, y), AutoSize = true, Font = new Font(Control.DefaultFont, FontStyle.Bold) };
+        y += 22;
+        var lblAvailability = new Label { Text = $"Availability: {_graph?.LastAvailability ?? "—"}", Location = new Point(20, y), AutoSize = true, ForeColor = Color.DimGray };
+        y += 18;
+        var lblActivity = new Label { Text = $"Activity: {_graph?.LastActivity ?? "—"}", Location = new Point(20, y), AutoSize = true, ForeColor = Color.DimGray };
+        y += 18;
+        var lblLight = new Label { Text = $"Light: {(_lastState == true ? "ON" : _lastState == false ? "OFF" : "—")}", Location = new Point(20, y), AutoSize = true, ForeColor = _lastState == true ? Color.Red : Color.Green };
+        y += 28;
+
+        var sep1 = new Label { Text = "", Location = new Point(20, y), Size = new Size(360, 1), BorderStyle = BorderStyle.Fixed3D };
+        y += 10;
+
+        // --- Connection settings ---
+        var lblClient = new Label { Text = "Azure Client ID:", Location = new Point(20, y), AutoSize = true };
+        y += 22;
+        var txtClient = new TextBox { Text = _settings.ClientId, Location = new Point(20, y), Width = 360 };
+        y += 30;
+
+        var lblPort = new Label { Text = "COM Port:", Location = new Point(20, y), AutoSize = true };
+        y += 22;
+        var cmbPort = new ComboBox { Location = new Point(20, y), Width = 360, DropDownStyle = ComboBoxStyle.DropDownList };
         cmbPort.Items.AddRange(_serial.GetAvailablePorts());
         if (!string.IsNullOrEmpty(_settings.ComPort))
             cmbPort.SelectedItem = _settings.ComPort;
+        y += 32;
 
-        var btnSave = new Button { Text = "Save && Connect", Location = new Point(20, 150), Width = 340, Height = 35 };
+        var sep2 = new Label { Text = "", Location = new Point(20, y), Size = new Size(360, 1), BorderStyle = BorderStyle.Fixed3D };
+        y += 10;
+
+        // --- Activity triggers ---
+        var lblTriggers = new Label { Text = "Turn light ON for these activities:", Location = new Point(20, y), AutoSize = true, Font = new Font(Control.DefaultFont, FontStyle.Bold) };
+        y += 24;
+
+        var checkboxes = new Dictionary<string, CheckBox>();
+        foreach (var kv in _settings.ActivityTriggers)
+        {
+            var cb = new CheckBox { Text = kv.Key, Checked = kv.Value, Location = new Point(20, y), AutoSize = true };
+            checkboxes[kv.Key] = cb;
+            form.Controls.Add(cb);
+            y += 22;
+        }
+        y += 10;
+
+        // --- Save button ---
+        var btnSave = new Button { Text = "Save && Connect", Location = new Point(20, y), Width = 360, Height = 35 };
         btnSave.Click += async (_, _) =>
         {
             _settings.ClientId = txtClient.Text.Trim();
             _settings.ComPort = cmbPort.SelectedItem?.ToString() ?? "";
+            foreach (var kv in checkboxes)
+                _settings.ActivityTriggers[kv.Key] = kv.Value.Checked;
             _settings.Save();
             form.Close();
             _pollTimer.Stop();
-            _graph = null;
-            await StartAsync();
+            if (_graph is not null)
+                _graph.UpdateActiveActivities(_settings.GetActiveActivities());
+            else
+            {
+                _graph = null;
+                await StartAsync();
+            }
         };
 
-        form.Controls.AddRange(new Control[] { lblClient, txtClient, lblPort, cmbPort, btnSave });
+        form.Controls.AddRange(new Control[] { lblDebug, lblAvailability, lblActivity, lblLight, sep1, lblClient, txtClient, lblPort, cmbPort, sep2, lblTriggers, btnSave });
         form.ShowDialog();
     }
 

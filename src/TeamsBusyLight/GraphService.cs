@@ -7,23 +7,26 @@ namespace TeamsBusyLight;
 public class GraphService
 {
     private static readonly string[] Scopes = ["Presence.Read"];
-    private static readonly HashSet<string> InMeetingActivities = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "InACall", "InAConferenceCall", "InAMeeting", "Presenting"
-    };
 
     private readonly IPublicClientApplication _msal;
     private readonly HttpClient _http = new();
     private IAccount? _account;
+    private HashSet<string> _activeActivities;
 
-    public GraphService(string clientId)
+    public GraphService(string clientId, HashSet<string> activeActivities)
     {
+        _activeActivities = activeActivities;
         _msal = PublicClientApplicationBuilder
             .Create(clientId)
             .WithRedirectUri("http://localhost")
             .WithAuthority(AzureCloudInstance.AzurePublic, "common")
             .Build();
     }
+
+    public void UpdateActiveActivities(HashSet<string> activities) => _activeActivities = activities;
+
+    public string? LastAvailability { get; private set; }
+    public string? LastActivity { get; private set; }
 
     public async Task<bool> SignInAsync()
     {
@@ -70,7 +73,9 @@ public class GraphService
             if (!response.IsSuccessStatusCode) return null;
 
             var json = await response.Content.ReadFromJsonAsync<PresenceResponse>();
-            return json?.Activity is not null && InMeetingActivities.Contains(json.Activity);
+            LastAvailability = json?.Availability;
+            LastActivity = json?.Activity;
+            return json?.Activity is not null && _activeActivities.Contains(json.Activity);
         }
         catch { return null; }
     }

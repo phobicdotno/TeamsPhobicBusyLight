@@ -8,6 +8,24 @@ public class AppSettings
     public string ComPort { get; set; } = "";
     public int PollIntervalSeconds { get; set; } = 5;
 
+    public Dictionary<string, bool> ActivityTriggers { get; set; } = new()
+    {
+        ["InACall"] = true,
+        ["InAConferenceCall"] = true,
+        ["InAMeeting"] = true,
+        ["Presenting"] = true,
+        ["Available"] = false,
+        ["Away"] = false,
+        ["BeRightBack"] = false,
+        ["Busy"] = false,
+        ["DoNotDisturb"] = false,
+        ["Offline"] = false,
+        ["PresenceUnknown"] = false,
+    };
+
+    public HashSet<string> GetActiveActivities() =>
+        new(ActivityTriggers.Where(kv => kv.Value).Select(kv => kv.Key), StringComparer.OrdinalIgnoreCase);
+
     private static readonly string SettingsPath = Path.Combine(
         AppContext.BaseDirectory, "settings.json");
 
